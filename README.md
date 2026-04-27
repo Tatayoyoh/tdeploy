@@ -21,13 +21,6 @@ Interactive rollout flow:
 6. Runs `docker rollout` for each selected service
 7. Records commit ID in `.tdeploy_history`
 
-## Prerequisites
-
-- Python >= 3.11
-- Docker with Docker Compose v2
-- Git
-- [uv](https://docs.astral.sh/uv/) for project management
-
 ## Installation
 
 ### Quick install (prebuilt binary)
@@ -37,6 +30,10 @@ curl -LsSf https://raw.githubusercontent.com/Tatayoyoh/tdeploy/main/install.sh |
 ```
 
 Downloads the latest release binary to `~/.local/bin/tdeploy`.
+
+Server Prerequisites
+- Docker with Docker Compose v2
+- Git
 
 ## Usage
 
@@ -60,6 +57,12 @@ ln -s docker-compose-sample.yaml docker-compose.yaml
 docker compose up -d
 uv run tdeploy
 ```
+
+Host Prerequisites
+- Python >= 3.11
+- Docker with Docker Compose v2
+- Git
+- [uv](https://docs.astral.sh/uv/) for project management
 
 ## Binary build (Nuitka)
 
