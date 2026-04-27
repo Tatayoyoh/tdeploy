@@ -1,0 +1,36 @@
+services:
+
+  web-server-a:
+    image: nivekbe/go-simple-server
+    restart: unless-stopped
+    expose:
+      - 80
+    labels:
+      # Add Traefik or Caddy labels here
+
+      # Docker-rollout zero downtime (https://github.com/wowu/docker-rollout#draining-old-containers)
+      # drain sleep time is : interval × retries + time
+      - "docker-rollout.pre-stop-hook=touch /tmp/drain && sleep 10"
+    stop_grace_period: 5s
+    healthcheck:
+      # Docker-rollout zero downtime (https://github.com/wowu/docker-rollout#draining-old-containers)
+      # test drain file here
+      test: test ! -f /tmp/drain && curl -f http://localhost:80
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 5s
+
+  web-server-b:
+    extends: web-server-a
+
+  # services below is ignore : no container_name allowed
+  web-server-wrong-a:
+    extends: web-server-a
+    container_name: web-server-wrong-a
+
+  # services below is ignore : no ports allowed
+  web-server-wrong-b:
+    extends: web-server-a
+    ports:
+      - 7777:80

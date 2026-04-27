@@ -3,3 +3,5 @@ dist
 __main__.*/*
 .venv
 venv
+.tdeploy_history
+docker-compose.yaml
