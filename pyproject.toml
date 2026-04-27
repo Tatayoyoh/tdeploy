@@ -1,0 +1,25 @@
+[project]
+name = "tdeploy"
+version = "0.1.0"
+description = "Zero-downtime Docker Compose deployments via docker-rollout"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "inquirerpy>=0.3.4",
+    "nuitka[app]>=4.0.8",
+    "pyyaml>=6.0",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+tdeploy = "tdeploy.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.nuitka]
+mode = "onefile"
+output-dir = "dist"
+output-filename = "tdeploy"
+include-package = "rich._unicode_data"
