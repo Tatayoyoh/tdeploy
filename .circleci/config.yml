@@ -1,0 +1,110 @@
+version: 2.1
+
+executors:
+  linux:
+    docker:
+      - image: cimg/python:3.11
+    resource_class: medium
+
+commands:
+  install-uv:
+    description: Install uv package manager
+    steps:
+      - run:
+          name: Install uv
+          command: |
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
+
+  install-build-deps:
+    description: Install system dependencies for Nuitka
+    steps:
+      - run:
+          name: Install patchelf and ccache
+          command: sudo apt-get update && sudo apt-get install -y patchelf ccache
+
+jobs:
+  build-linux-x86_64:
+    executor: linux
+    steps:
+      - checkout
+      - install-uv
+      - install-build-deps
+      - restore_cache:
+          keys:
+            - uv-{{ checksum "uv.lock" }}
+            - uv-
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - save_cache:
+          key: uv-{{ checksum "uv.lock" }}
+          paths:
+            - .venv
+            - ~/.cache/uv
+      - run:
+          name: Build binary with Nuitka
+          command: |
+            uv run python -m nuitka \
+              --onefile \
+              --python-flag=-m \
+              --output-dir=dist \
+              --output-filename=tdeploy \
+              --include-package=rich._unicode_data \
+              tdeploy
+          no_output_timeout: 20m
+      - run:
+          name: Package artifact
+          command: |
+            mkdir -p artifacts
+            cp dist/tdeploy artifacts/tdeploy-linux-x86_64
+            chmod +x artifacts/tdeploy-linux-x86_64
+      - persist_to_workspace:
+          root: artifacts
+          paths: ["*"]
+
+  release:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - run:
+          name: Install GitHub CLI
+          command: |
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+              https://cli.github.com/packages stable main" \
+              | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update && sudo apt-get install -y gh
+      - attach_workspace:
+          at: /tmp/artifacts
+      - run:
+          name: Create GitHub Release
+          command: |
+            TAG="${CIRCLE_TAG}"
+            echo "Creating release for tag: ${TAG}"
+            ls -la /tmp/artifacts/
+
+            gh release create "${TAG}" \
+              --repo "${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}" \
+              --title "tdeploy ${TAG}" \
+              --generate-notes \
+              /tmp/artifacts/tdeploy-linux-x86_64
+
+workflows:
+  release:
+    jobs:
+      - build-linux-x86_64:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - release:
+          requires:
+            - build-linux-x86_64
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/

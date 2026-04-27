@@ -21,6 +21,16 @@ Interactive CLI tool for **zero-downtime** Docker Compose deployments via [docke
 
 ## Installation
 
+### Quick install (prebuilt binary)
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/Tatayoyoh/tdeploy/main/install.sh | sh
+```
+
+Downloads the latest release binary to `~/.local/bin/tdeploy`.
+
+### From source
+
 ```bash
 uv sync
 ```
