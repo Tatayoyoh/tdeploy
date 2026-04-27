@@ -6,7 +6,7 @@ from InquirerPy.base.control import Choice
 from tdeploy.compose import ComposeFileNotFoundError, find_compose_file, parse_services
 from tdeploy.docker_rollout import check_or_install, rollout_service
 from tdeploy.history import get_current_commit, record_commit
-from tdeploy.runner import CommandError, run, run_streaming
+from tdeploy.runner import CommandError, run_streaming
 from tdeploy.ui import confirm, console, print_banner, print_error, print_step, print_success, print_warning
 
 
@@ -52,12 +52,11 @@ def run_deploy(skip_git_pull: bool = False):
     if not skip_git_pull:
         if confirm("Git pull?", default=True):
             print_step(4, 6, "Pulling latest changes...")
-            try:
-                run(["git", "pull"], status_message="Running git pull...")
-                print_success("Git pull complete")
-            except CommandError as e:
-                print_error(f"Git pull failed: {e.stderr}")
+            exit_code = run_streaming(["git", "pull"], status_message="Running git pull...")
+            if exit_code != 0:
+                print_error("Git pull failed.")
                 raise SystemExit(1)
+            print_success("Git pull complete")
 
     # 5. Docker compose build
     if confirm("Docker compose build?", default=True):
