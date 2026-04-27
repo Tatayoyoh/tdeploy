@@ -1,5 +1,5 @@
 *.pyc
 dist
-__main__.*
+__main__.*/*
 .venv
 venv
