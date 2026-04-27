@@ -37,10 +37,17 @@ def run_deploy(skip_git_pull: bool = False):
         raise SystemExit(1)
 
     console.print(f"  Found: [bold]{compose_file.name}[/bold]")
-    services = parse_services(compose_file)
+    services, excluded = parse_services(compose_file)
+
+    if excluded:
+        print_warning(
+            "Excluded from rollout (incompatible with docker-rollout):"
+        )
+        for name, reasons in excluded.items():
+            console.print(f"    [dim]- {name} ({', '.join(reasons)})[/dim]")
 
     if not services:
-        print_error("No services found in compose file.")
+        print_error("No eligible services found in compose file.")
         raise SystemExit(1)
 
     # 3. Service selection

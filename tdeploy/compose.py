@@ -26,11 +26,33 @@ def find_compose_file(directory: Path | None = None) -> Path:
     )
 
 
-def parse_services(compose_file: Path) -> list[str]:
+def parse_services(compose_file: Path) -> tuple[list[str], dict[str, list[str]]]:
+    """Parse compose file and return (eligible_services, excluded_services).
+
+    excluded_services maps service name to list of reasons (e.g. ["container_name", "ports"]).
+    Services with container_name or ports are incompatible with docker-rollout.
+    """
     with open(compose_file, "r") as f:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict) or "services" not in data:
         raise ValueError(f"Invalid compose file: no 'services' key in {compose_file}")
 
-    return sorted(data["services"].keys())
+    eligible = []
+    excluded: dict[str, list[str]] = {}
+
+    for name, config in sorted(data["services"].items()):
+        if not isinstance(config, dict):
+            eligible.append(name)
+            continue
+        reasons = []
+        if "container_name" in config:
+            reasons.append("container_name")
+        if "ports" in config:
+            reasons.append("ports")
+        if reasons:
+            excluded[name] = reasons
+        else:
+            eligible.append(name)
+
+    return eligible, excluded
