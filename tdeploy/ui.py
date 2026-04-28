@@ -32,7 +32,12 @@ def print_step(step_num: int, total: int, message: str):
     console.print(f"\n[bold][{step_num}/{total}][/bold] {message}")
 
 
-def confirm(message: str, default: bool = False) -> bool:
+def confirm(message: str, default: bool = True) -> bool:
     from InquirerPy import inquirer
 
-    return inquirer.confirm(message=message, default=default).execute()
+    choices = ["Yes", "No"] if default else ["No", "Yes"]
+    result = inquirer.select(
+        message=message,
+        choices=choices,
+    ).execute()
+    return result == "Yes"
