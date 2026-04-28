@@ -1,4 +1,6 @@
+import os
 import subprocess
+import sys
 
 from tdeploy.ui import console, print_error
 
@@ -35,6 +37,19 @@ def run_streaming(
     status_message: str,
     cwd: str | None = None,
 ) -> int:
+    """Run command with full terminal access (supports interactive prompts like SSH passphrase)."""
     console.print(f"  [bold cyan]{status_message}[/bold cyan]")
-    result = subprocess.run(command, cwd=cwd)
+    try:
+        tty = open("/dev/tty", "r")
+    except OSError:
+        tty = None
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            stdin=tty or sys.stdin,
+        )
+    finally:
+        if tty:
+            tty.close()
     return result.returncode
