@@ -28,6 +28,10 @@ def _dispatch(args: list[str]):
         from tdeploy.rollback import run_rollback
 
         run_rollback()
+    elif args[0] == "self-upgrade":
+        from tdeploy.self_upgrade import run_self_upgrade
+
+        run_self_upgrade()
     else:
         from tdeploy.ui import print_error
 
@@ -43,5 +47,6 @@ def _print_help():
     console.print("[bold]Usage:[/bold]")
     console.print("  tdeploy              Deploy services (default)")
     console.print("  tdeploy rollback     Rollback to previous deployment")
+    console.print("  tdeploy self-upgrade Download latest version from GitHub")
     console.print("  tdeploy --version    Show version")
     console.print("  tdeploy --help       Show this help")

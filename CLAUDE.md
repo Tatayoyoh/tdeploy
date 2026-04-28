@@ -19,7 +19,7 @@
 tdeploy/              # Main package
   __init__.py         # __version__ constant
   __main__.py         # python -m tdeploy entry
-  cli.py              # sys.argv parsing, dispatch to deploy/rollback
+  cli.py              # sys.argv parsing, dispatch to deploy/rollback/self-upgrade
   ui.py               # Rich Console singleton, print_success/error/warning/step, confirm()
   runner.py           # run() with spinner, run_streaming() for long ops, CommandError exception
   compose.py          # find_compose_file(), parse_services() via PyYAML
@@ -27,6 +27,7 @@ tdeploy/              # Main package
   history.py          # .tdeploy_history read/write/get_previous_commit
   deploy.py           # run_deploy() — main deploy orchestration
   rollback.py         # run_rollback() — checkout previous commit + redeploy
+  self_upgrade.py     # run_self_upgrade() — download latest binary from GitHub Releases
 ```
 
 ## Key conventions
@@ -42,6 +43,7 @@ tdeploy/              # Main package
 
 - `tdeploy` or `tdeploy deploy` — interactive deploy flow
 - `tdeploy rollback` — checkout previous commit from history, redeploy (skip git pull)
+- `tdeploy self-upgrade` — download latest binary from GitHub Releases
 - `tdeploy --version` / `tdeploy --help`
 
 ## Development
