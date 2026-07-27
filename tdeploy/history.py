@@ -1,8 +1,9 @@
 from pathlib import Path
 
+from tdeploy import config
 from tdeploy.runner import run
 
-HISTORY_FILE = ".tdeploy_history"
+LEGACY_HISTORY_FILE = ".tdeploy_history"
 
 
 def get_current_commit() -> str:
@@ -15,10 +16,19 @@ def get_current_commit() -> str:
 
 
 def read_history(directory: Path | None = None) -> list[str]:
-    history_path = (directory or Path.cwd()) / HISTORY_FILE
-    if not history_path.is_file():
-        return []
-    return [line.strip() for line in history_path.read_text().splitlines() if line.strip()]
+    """Return deploy history (oldest first).
+
+    Prefers the `history` list in the unified .tdeploy config. Falls back to the
+    legacy `.tdeploy_history` file (one SHA per line) for pre-migration setups.
+    """
+    history = config.load(directory).get("history")
+    if isinstance(history, list) and history:
+        return [str(h).strip() for h in history if str(h).strip()]
+
+    legacy = (directory or Path.cwd()) / LEGACY_HISTORY_FILE
+    if legacy.is_file():
+        return [line.strip() for line in legacy.read_text().splitlines() if line.strip()]
+    return []
 
 
 def get_previous_commit(directory: Path | None = None) -> str | None:
@@ -29,9 +39,10 @@ def get_previous_commit(directory: Path | None = None) -> str | None:
 
 
 def record_commit(commit_id: str, directory: Path | None = None):
-    history_path = (directory or Path.cwd()) / HISTORY_FILE
-    history = read_history(directory)
+    history = read_history(directory)  # migrates legacy history on first write
     if history and history[-1] == commit_id:
         return
-    with open(history_path, "a") as f:
-        f.write(commit_id + "\n")
+    history.append(commit_id)
+    data = config.load(directory)
+    data["history"] = history
+    config.save(data, directory)

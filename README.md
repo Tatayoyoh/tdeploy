@@ -5,21 +5,23 @@ Interactive CLI tool for **zero-downtime** Docker Compose deployments via [docke
 ## Features
 
 - Automatic `docker-rollout` installation if missing
-- Multi-select checkbox for service selection
-- Optional git pull before deployment
+- Optional private registry login before pulling (`.tdeploy` config)
+- Optional git pull before deployment (compose file re-read afterwards)
+- Multi-select checkbox for service selection (auto-selected when only one service)
 - Optional docker compose build
 - Rolling deploy service by service (`docker rollout`)
-- Deployment history tracking (`.tdeploy_history`)
+- Deployment history tracking (`.tdeploy`)
 - One-command rollback to previous commit
 
 Interactive rollout flow:
 1. Checks/installs `docker-rollout`
-2. Detects `docker-compose.yaml` / `docker-compose.yml` in current directory
-3. Presents service selection (multi-select checkbox)
-4. Asks whether to git pull
-5. Asks whether to docker compose build
-6. Runs `docker rollout` for each selected service
-7. Records commit ID in `.tdeploy_history`
+2. Logs in to the registry if credentials are set in `.tdeploy`
+3. Detects `docker-compose.yaml` / `docker-compose.yml` in current directory
+4. Asks whether to git pull (before selection, so the compose file is up to date)
+5. Presents service selection (multi-select checkbox; auto-selected if only one)
+6. Asks whether to docker compose build
+7. Runs `docker rollout` for each selected service
+8. Records commit ID in `.tdeploy`
 
 ## Installation
 
@@ -47,7 +49,29 @@ tdeploy
 tdeploy rollback
 ```
 
-Checks out the previous commit (from `.tdeploy_history`), then runs the deployment flow without the git pull prompt.
+Checks out the previous commit (from `.tdeploy`), then runs the deployment flow without the git pull prompt.
+
+## Configuration (`.tdeploy`)
+
+`tdeploy` keeps its state and optional settings in a single `.tdeploy` YAML file in the current directory. It is created/updated automatically and should be **gitignored** (it may hold a registry token).
+
+```yaml
+# Optional — auto docker login before pulling private images.
+# Omit this block entirely to rely on an existing `docker login`.
+registry:
+  login: myuser
+  token: dckr_pat_xxxxx   # use a scoped, read-only access token
+  url:                    # empty = Docker Hub; else e.g. registry.example.com
+
+# Machine-managed — deployment history, oldest first.
+history:
+  - <commit-sha>
+```
+
+Notes:
+- The token is passed to `docker login` via `--password-stdin` (never on the command line). `chmod 600 .tdeploy` and gitignore it.
+- The file is rewritten on each recorded deploy, so hand-written comments are not preserved.
+- A legacy `.tdeploy_history` file (one SHA per line) is still read as a fallback and migrated into `.tdeploy` on the next deploy.
 
 ## Development
 

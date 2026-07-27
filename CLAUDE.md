@@ -24,7 +24,9 @@ tdeploy/              # Main package
   runner.py           # run() with spinner, run_streaming() for long ops, CommandError exception
   compose.py          # find_compose_file(), parse_services() via PyYAML
   docker_rollout.py   # check_or_install(), rollout_service()
-  history.py          # .tdeploy_history read/write/get_previous_commit
+  config.py           # unified .tdeploy YAML load()/save()
+  history.py          # deploy history in .tdeploy (legacy .tdeploy_history fallback)
+  registry.py         # docker login from .tdeploy registry block (login_if_configured)
   deploy.py           # run_deploy() — main deploy orchestration
   rollback.py         # run_rollback() — checkout previous commit + redeploy
   self_upgrade.py     # run_self_upgrade() — download latest binary from GitHub Releases
@@ -37,7 +39,10 @@ tdeploy/              # Main package
 - Two subprocess modes: `run()` (spinner, capture) vs `run_streaming()` (raw output for build/rollout)
 - Manual `sys.argv` parsing in cli.py (no argparse — only 2 commands + 2 flags)
 - Lazy imports in cli.py for fast `--version`/`--help`
-- History file: `.tdeploy_history` in cwd, one full SHA per line, no consecutive duplicates
+- Config/state file: `.tdeploy` in cwd — single YAML, gitignored (holds a token), machine-managed (rewritten on each deploy, so comments don't survive). Two blocks:
+  - `registry:` (optional, hand-edited) — `login`, `token`, `url` (empty = Docker Hub). Login runs at deploy start via `--password-stdin` (token never on argv); no-op if login/token absent
+  - `history:` (machine-appended) — list of full SHAs, oldest first, no consecutive duplicates
+- Legacy `.tdeploy_history` (one SHA per line) is still read as a fallback and auto-migrated into `.tdeploy` on the next recorded deploy
 
 ## Commands
 

@@ -4,5 +4,6 @@ __main__.*/*
 .venv
 venv
 .tdeploy_history
+.tdeploy
 docker-compose.yaml
 .vscode
