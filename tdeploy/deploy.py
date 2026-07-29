@@ -3,7 +3,7 @@ from pathlib import Path
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 
-from tdeploy.compose import ComposeFileNotFoundError, find_compose_file, parse_services
+from tdeploy.compose import ComposeFileNotFoundError, classify_services, find_compose_file, parse_services
 from tdeploy.docker_rollout import check_or_install, rollout_service
 from tdeploy.history import get_current_commit, record_commit
 from tdeploy.registry import login_if_configured
@@ -29,7 +29,7 @@ def run_deploy(skip_git_pull: bool = False):
     print_banner()
 
     # 1. docker-rollout check
-    print_step(1, 6, "Checking docker-rollout...")
+    print_step(1, 7, "Checking docker-rollout...")
     check_or_install()
     print_success("docker-rollout ready")
 
@@ -37,7 +37,7 @@ def run_deploy(skip_git_pull: bool = False):
     login_if_configured()
 
     # 2. Find compose file
-    print_step(2, 6, "Finding compose file...")
+    print_step(2, 7, "Finding compose file...")
     try:
         compose_file = find_compose_file()
     except ComposeFileNotFoundError as e:
@@ -49,7 +49,7 @@ def run_deploy(skip_git_pull: bool = False):
     # 3. Git pull (before service selection, so the compose file is up to date)
     if not skip_git_pull:
         if confirm("Git pull?", default=True):
-            print_step(3, 6, "Pulling latest changes...")
+            print_step(3, 7, "Pulling latest changes...")
             exit_code = run_streaming(["git", "pull"], status_message="Running git pull...")
             if exit_code != 0:
                 print_error("Git pull failed.")
@@ -57,7 +57,7 @@ def run_deploy(skip_git_pull: bool = False):
             print_success("Git pull complete")
 
     # 4. Parse services (after the pull) and select
-    print_step(4, 6, "Service selection")
+    print_step(4, 7, "Service selection")
     services, excluded = parse_services(compose_file)
 
     if excluded:
@@ -74,18 +74,35 @@ def run_deploy(skip_git_pull: bool = False):
     selected = select_services(services)
     console.print(f"  Selected: [bold cyan]{', '.join(selected)}[/bold cyan]")
 
-    # 5. Docker compose build
-    if confirm("Docker compose build?", default=True):
-        print_step(5, 6, "Building services...")
-        build_cmd = ["docker", "compose", "-f", str(compose_file), "build"] + selected
-        exit_code = run_streaming(build_cmd, status_message="Building images...")
-        if exit_code != 0:
-            print_error("Docker compose build failed.")
-            raise SystemExit(1)
-        print_success("Build complete")
+    # Split into build-based vs image-based services
+    buildable, image_based = classify_services(compose_file, selected)
 
-    # 6. Rolling deploy
-    print_step(6, 6, "Deploying services...")
+    # 5. Docker compose build — only for services that define a build: key
+    if buildable:
+        if confirm("Docker compose build?", default=True):
+            print_step(5, 7, "Building services...")
+            build_cmd = ["docker", "compose", "-f", str(compose_file), "build"] + buildable
+            exit_code = run_streaming(build_cmd, status_message="Building images...")
+            if exit_code != 0:
+                print_error("Docker compose build failed.")
+                raise SystemExit(1)
+            print_success("Build complete")
+    else:
+        print_step(5, 7, "Building services...")
+        console.print("  [dim]No build-based services selected — skipping build.[/dim]")
+
+    # 6. Always pull images for image-based services
+    if image_based:
+        print_step(6, 7, "Pulling images...")
+        pull_cmd = ["docker", "compose", "-f", str(compose_file), "pull"] + image_based
+        exit_code = run_streaming(pull_cmd, status_message="Pulling images...")
+        if exit_code != 0:
+            print_error("Docker compose pull failed.")
+            raise SystemExit(1)
+        print_success("Pull complete")
+
+    # 7. Rolling deploy
+    print_step(7, 7, "Deploying services...")
     failed = []
     for service in selected:
         exit_code = rollout_service(compose_file, service)

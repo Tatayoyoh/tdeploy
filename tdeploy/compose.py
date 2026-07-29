@@ -56,3 +56,30 @@ def parse_services(compose_file: Path) -> tuple[list[str], dict[str, list[str]]]
             eligible.append(name)
 
     return eligible, excluded
+
+
+def classify_services(compose_file: Path, service_names: list[str]) -> tuple[list[str], list[str]]:
+    """Split service_names into (buildable, image_based).
+
+    buildable: services that define a 'build:' key (need `docker compose build`).
+    image_based: services based on an image only (skip build, always `docker compose pull`).
+
+    A service with both 'build' and 'image' is buildable (image is the build output tag).
+    """
+    with open(compose_file, "r") as f:
+        data = yaml.safe_load(f)
+
+    services = data.get("services", {}) if isinstance(data, dict) else {}
+
+    buildable = []
+    image_based = []
+    for name in service_names:
+        config = services.get(name)
+        if not isinstance(config, dict):
+            continue
+        if "build" in config:
+            buildable.append(name)
+        elif "image" in config:
+            image_based.append(name)
+
+    return buildable, image_based
