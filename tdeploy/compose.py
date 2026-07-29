@@ -65,11 +65,22 @@ def classify_services(compose_file: Path, service_names: list[str]) -> tuple[lis
     image_based: services based on an image only (skip build, always `docker compose pull`).
 
     A service with both 'build' and 'image' is buildable (image is the build output tag).
+
+    A build-less service whose 'image' tag is the build output of another service in
+    the compose file is neither built nor pulled (that tag exists only locally, so a
+    pull would fail with 'pull access denied'); it is just rolled out.
     """
     with open(compose_file, "r") as f:
         data = yaml.safe_load(f)
 
     services = data.get("services", {}) if isinstance(data, dict) else {}
+
+    # Image tags produced locally by a build: service — never pull these.
+    built_images = {
+        c["image"]
+        for c in services.values()
+        if isinstance(c, dict) and "build" in c and "image" in c
+    }
 
     buildable = []
     image_based = []
@@ -79,7 +90,7 @@ def classify_services(compose_file: Path, service_names: list[str]) -> tuple[lis
             continue
         if "build" in config:
             buildable.append(name)
-        elif "image" in config:
+        elif "image" in config and config["image"] not in built_images:
             image_based.append(name)
 
     return buildable, image_based
