@@ -1,6 +1,6 @@
 [project]
 name = "tdeploy"
-version = "0.6.0"
+version = "0.7.0"
 description = "Zero-downtime Docker Compose deployments via docker-rollout"
 readme = "README.md"
 requires-python = ">=3.11"
