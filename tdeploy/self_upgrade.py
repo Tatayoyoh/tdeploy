@@ -30,14 +30,19 @@ def _get_latest_release() -> tuple[str, str]:
 
 def _current_binary_path() -> Path:
     """Return path of running tdeploy binary."""
-    # Nuitka onefile: sys.executable points to the binary itself
-    exe = Path(sys.executable).resolve()
-    if exe.name == "python" or exe.name.startswith("python3"):
+    # Nuitka defines the `__compiled__` module global only in compiled builds.
+    if "__compiled__" not in globals():
         # Running via `uv run` / `python -m` — not a compiled binary
         raise RuntimeError(
             "self-upgrade only works with the compiled binary, not via python/uv"
         )
-    return exe
+    # Nuitka onefile extracts its payload to a temp dir and runs it there, so
+    # sys.executable points at the extracted payload, not the launched binary.
+    # NUITKA_ONEFILE_BINARY holds the path of the actual onefile binary.
+    onefile = os.environ.get("NUITKA_ONEFILE_BINARY")
+    if onefile:
+        return Path(onefile).resolve()
+    return Path(sys.executable).resolve()
 
 
 def run_self_upgrade():
