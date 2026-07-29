@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import stat
 import sys
 import tempfile
@@ -37,12 +38,16 @@ def _current_binary_path() -> Path:
             "self-upgrade only works with the compiled binary, not via python/uv"
         )
     # Nuitka onefile extracts its payload to a temp dir and runs it there, so
-    # sys.executable points at the extracted payload, not the launched binary.
-    # NUITKA_ONEFILE_BINARY holds the path of the actual onefile binary.
-    onefile = os.environ.get("NUITKA_ONEFILE_BINARY")
-    if onefile:
-        return Path(onefile).resolve()
-    return Path(sys.executable).resolve()
+    # sys.executable points at the extracted payload (/tmp/onefile_*/python3),
+    # not the launched binary. sys.argv[0] holds the real onefile binary path
+    # (Nuitka resolves it to an absolute path even when launched via PATH).
+    argv0 = sys.argv[0]
+    path = Path(argv0)
+    if not path.is_absolute():
+        resolved = shutil.which(argv0)
+        if resolved:
+            path = Path(resolved)
+    return path.resolve()
 
 
 def run_self_upgrade():
